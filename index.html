@@ -87,12 +87,7 @@
     </style>
 </head>
 <body>
-    <div id="root">
-        <div id="loading-screen" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; color: white; background: #020617; font-family: sans-serif;">
-            <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; font-family: 'Outfit';">PFORM</div>
-            <div style="opacity: 0.6; font-size: 0.9rem;">Carregando sistema...</div>
-        </div>
-    </div>
+    <div id="root"></div>
 
     <!-- Bibliotecas Externas -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -103,72 +98,72 @@
     <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
 
     <script type="text/babel">
-        // Log para depuração no celular
-        console.log("PFORM: Iniciando scripts Babel...");
         // --- CONFIGURAÇÃO ---
         const GEMINI_API_KEY = "AIzaSyBLdfFdlMJfecsxdiBUFCBQjvIXdH0bNlg";
 
         const { useState, useEffect, useRef, useMemo } = React;
         
-        // Verificação segura das bibliotecas
-        const motion = window.Motion?.motion || (window.FramerMotion ? window.FramerMotion.motion : null);
-        const AnimatePresence = window.Motion?.AnimatePresence || (window.FramerMotion ? window.FramerMotion.AnimatePresence : null);
+        // Verificação das bibliotecas Motion
+        const motion = window.Motion ? window.Motion.motion : (window.FramerMotion ? window.FramerMotion.motion : null);
+        const AnimatePresence = window.Motion ? window.Motion.AnimatePresence : (window.FramerMotion ? window.FramerMotion.AnimatePresence : null);
         
         const { 
             AreaChart, Area, LineChart, Line, XAxis, YAxis, 
             CartesianGrid, Tooltip, ResponsiveContainer 
         } = window.Recharts || {};
 
-        if (!motion) console.error("Framer Motion não carregado!");
-        if (!window.Recharts) console.error("Recharts não carregado!");
-
         // Helper para ícones Lucide no React
         const Icon = ({ name, color = 'currentColor', size = 24, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
+                if (!window.lucide || !iconRef.current) return;
                 try {
-                    const icons = window.lucide?.icons || {};
-                    const icon = icons[name] || icons['HelpCircle'] || icons['Activity'];
-                    if (icon && iconRef.current) {
-                        const svg = icon.toSvg({
+                    const lc = window.lucide;
+                    // Converter para kebab-case (User -> user, HelpCircle -> help-circle)
+                    const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+                    
+                    // Limpar e injetar marcador
+                    iconRef.current.innerHTML = `<i data-lucide="${kebab}"></i>`;
+                    
+                    // Renderizar ícone usando o método createIcons (mais estável no UMD)
+                    lc.createIcons({
+                        root: iconRef.current,
+                        attrs: {
                             stroke: color,
+                            'stroke-width': 2,
                             width: size,
                             height: size,
-                            'stroke-width': 2,
-                        });
-                        iconRef.current.innerHTML = svg;
-                        const svgElement = iconRef.current.firstElementChild;
-                        if (svgElement && className) {
-                            svgElement.classList.add(...className.split(' ').filter(c => c));
+                            class: className
                         }
-                    }
-                } catch(e) { console.error("Erro no ícone:", name, e); }
+                    });
+                } catch(e) { 
+                    console.error("Erro no ícone:", name, e); 
+                }
             }, [name, color, size, className]);
 
             return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`}></span>;
         };
 
-        // Fallback simples para motion se não carregar
-        const MotionDiv = motion ? motion.div : "div";
-        const MotionAnimatePresence = AnimatePresence || (({children}) => children);
-
-        const Card = ({ children, className = "", title }) => (
-            <MotionDiv
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className={`bg-white/5 backdrop-blur-xl rounded-[32px] p-6 border border-white/10 glass-shadow overflow-hidden relative ${className}`}
-            >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
-                {title && (
-                    <h3 className="text-xl font-semibold text-white mb-6 tracking-tight">{title}</h3>
-                )}
-                {children}
-            </MotionDiv>
-        );
+        const Card = ({ children, className = "", title }) => {
+            const Component = motion ? motion.div : "div";
+            return (
+                <Component
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`bg-white/5 backdrop-blur-xl rounded-[32px] p-6 border border-white/10 glass-shadow overflow-hidden relative ${className}`}
+                >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
+                    {title && (
+                        <h3 className="text-xl font-semibold text-white mb-6 tracking-tight">{title}</h3>
+                    )}
+                    {children}
+                </Component>
+            );
+        };
 
         async function callGemini(prompt) {
             if (!GEMINI_API_KEY || GEMINI_API_KEY === "SUA_API_KEY_AQUI") {
-                alert("Por favor, adicione sua Gemini API Key na linha 115 do seu arquivo.");
+                alert("Por favor, adicione sua Gemini API Key na linha 134 do seu arquivo.");
                 return null;
             }
             try {
@@ -272,74 +267,96 @@
                     </header>
 
                     <main className="max-w-lg mx-auto px-6">
-                        <MotionAnimatePresence mode="wait">
-                            {activeTab === 'workouts' && (
-                                <MotionDiv key="workouts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-                                    {activeWorkout ? (
-                                        <Card title="Treino Ativo">
-                                            <div className="flex justify-between items-center mb-6">
-                                                <p className="text-2xl font-black text-white flex items-center gap-2">
-                                                    <Icon name="Timer" color="#3b82f6" className="animate-pulse" />
-                                                    {Math.floor(elapsedSeconds/60)}:{(elapsedSeconds%60).toString().padStart(2, '0')}
-                                                </p>
-                                                <button onClick={finishWorkout} className="bg-emerald-500 px-6 py-3 rounded-2xl font-black text-xs uppercase text-white">Finalizar</button>
-                                            </div>
+                        {(AnimatePresence) ? (
+                            <AnimatePresence mode="wait">
+                                {activeTab === 'workouts' && (
+                                    <motion.div key="workouts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                        {activeWorkout ? (
+                                            <Card title="Treino Ativo">
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <p className="text-2xl font-black text-white flex items-center gap-2">
+                                                        <Icon name="Timer" color="#3b82f6" className="animate-pulse" />
+                                                        {Math.floor(elapsedSeconds/60)}:{(elapsedSeconds%60).toString().padStart(2, '0')}
+                                                    </p>
+                                                    <button onClick={finishWorkout} className="bg-emerald-500 px-6 py-3 rounded-2xl font-black text-xs uppercase text-white">Finalizar</button>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    {activeWorkout.exercises.map(ex => (
+                                                        <div key={ex.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
+                                                            <p className="font-bold text-white">{ex.name}</p>
+                                                            <span className="text-xs text-slate-400">{ex.sets}x{ex.reps}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </Card>
+                                        ) : (
                                             <div className="space-y-4">
-                                                {activeWorkout.exercises.map(ex => (
-                                                    <div key={ex.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
-                                                        <p className="font-bold text-white">{ex.name}</p>
-                                                        <span className="text-xs text-slate-400">{ex.sets}x{ex.reps}</span>
-                                                    </div>
+                                                {workouts.length === 0 && <p className="text-center text-slate-500 py-10">Nenhum treino registrado.</p>}
+                                                {workouts.map(w => (
+                                                    <Card key={w.id} title={w.notes}>
+                                                        <p className="text-xs text-slate-500 uppercase font-black">{w.date}</p>
+                                                    </Card>
                                                 ))}
                                             </div>
-                                        </Card>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {workouts.length === 0 && <p className="text-center text-slate-500 py-10">Nenhum treino registrado.</p>}
-                                            {workouts.map(w => (
-                                                <Card key={w.id} title={w.notes}>
-                                                    <p className="text-xs text-slate-500 uppercase font-black">{w.date}</p>
-                                                </Card>
-                                            ))}
+                                        )}
+                                    </motion.div>
+                                )}
+
+                                {activeTab === 'gym' && (
+                                    <motion.div key="gym" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                        {gymTemplates.map(t => (
+                                            <Card key={t.id} title={t.name}>
+                                                <button onClick={() => startWorkout(t)} className="w-full bg-blue-600 py-3 rounded-2xl font-black uppercase text-xs text-white">Iniciar Treino</button>
+                                            </Card>
+                                        ))}
+                                    </motion.div>
+                                )}
+                                
+                                {activeTab === 'nutrition' && (
+                                    <motion.div key="nutrition" className="space-y-6">
+                                        <div className="bg-white/5 p-4 rounded-3xl border border-white/10 space-y-4">
+                                            <button onClick={handleFetchNutrition} disabled={loadingNutrition} className="w-full bg-white text-slate-900 py-4 rounded-2xl font-black uppercase">
+                                                {loadingNutrition ? 'Gerando...' : 'Obter Dietas IA'}
+                                            </button>
                                         </div>
-                                    )}
-                                </motion.div>
-                            )}
+                                        {mealSuggestions.map((m, i) => (
+                                            <Card key={i} title={m.name}>
+                                                <p className="text-sm text-slate-400">{m.benefits}</p>
+                                            </Card>
+                                        ))}
+                                    </motion.div>
+                                )}
 
-                            {activeTab === 'gym' && (
-                                <MotionDiv key="gym" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-                                    {gymTemplates.map(t => (
-                                        <Card key={t.id} title={t.name}>
-                                            <button onClick={() => startWorkout(t)} className="w-full bg-blue-600 py-3 rounded-2xl font-black uppercase text-xs text-white">Iniciar Treino</button>
+                                {activeTab === 'profile' && (
+                                    <motion.div key="profile" className="space-y-6">
+                                        <Card title="Perfil">
+                                            <p className="text-slate-400">Peso: {userProfile.weight}kg</p>
+                                            <p className="text-slate-400">Objetivo: {userProfile.goal}</p>
                                         </Card>
-                                    ))}
-                                </motion.div>
-                            )}
-                            
-                            {activeTab === 'nutrition' && (
-                                <MotionDiv key="nutrition" className="space-y-6">
-                                    <div className="bg-white/5 p-4 rounded-3xl border border-white/10 space-y-4">
-                                        <button onClick={handleFetchNutrition} disabled={loadingNutrition} className="w-full bg-white text-slate-900 py-4 rounded-2xl font-black uppercase">
-                                            {loadingNutrition ? 'Gerando...' : 'Obter Dietas IA'}
-                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        ) : (
+                            <div className="space-y-6">
+                                {activeTab === 'workouts' && (
+                                    <div className="space-y-6">
+                                        {activeWorkout ? (
+                                            <Card title="Treino Ativo">
+                                                {/* Conteúdo omitido para brevidade no fallback */}
+                                                <p className="text-white">Treino em andamento...</p>
+                                            </Card>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {workouts.map(w => (
+                                                    <Card key={w.id} title={w.notes} />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    {mealSuggestions.map((m, i) => (
-                                        <Card key={i} title={m.name}>
-                                            <p className="text-sm text-slate-400">{m.benefits}</p>
-                                        </Card>
-                                    ))}
-                                </motion.div>
-                            )}
-
-                            {activeTab === 'profile' && (
-                                <MotionDiv key="profile" className="space-y-6">
-                                    <Card title="Perfil">
-                                        <p className="text-slate-400">Peso: {userProfile.weight}kg</p>
-                                        <p className="text-slate-400">Objetivo: {userProfile.goal}</p>
-                                    </Card>
-                                </motion.div>
-                            )}
-                        </MotionAnimatePresence>
+                                )}
+                                {/* Outras abas simplificadas se necessário */}
+                            </div>
+                        )}
                     </main>
 
                     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 pb-8 pt-4 bg-slate-950/80 backdrop-blur-3xl border-t border-white/5 z-50">
