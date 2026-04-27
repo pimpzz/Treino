@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PFORM | Peak Performance Offline</title>
+    <title>PFORM | Peak Performance</title>
     
     <!-- Meta tags PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PFORM">
     <meta name="theme-color" content="#020617">
 
     <!-- CSS: Tailwind & Google Fonts -->
@@ -15,7 +16,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* Custom Styles de index.css */
         @layer base {
             body {
                 font-family: 'Inter', sans-serif;
@@ -23,9 +23,8 @@
                 color: #f8fafc;
                 padding-top: env(safe-area-inset-top);
                 padding-bottom: env(safe-area-inset-bottom);
-                padding-left: env(safe-area-inset-left);
-                padding-right: env(safe-area-inset-right);
                 min-height: 100vh;
+                margin: 0;
             }
             h1, h2, h3, h4 {
                 font-family: 'Outfit', sans-serif;
@@ -71,15 +70,6 @@
             filter: blur(140px);
         }
 
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* Configuração do Tailwind com Temas */
         tailwind.config = {
             theme: {
                 extend: {
@@ -102,20 +92,17 @@
     <!-- Bibliotecas Externas -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Framer Motion via unpkg -->
     <script src="https://unpkg.com/framer-motion@11.0.3/dist/framer-motion.js"></script>
-    <!-- Recharts -->
     <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
 
-    <script type="text/babel">
-        // --- CONFIGURAÇÃO DA API ---
-        // Coloque sua Gemini API Key aqui:
-        const GEMINI_API_KEY = "";
+    <script type="text/babel" data-presets="react,stage-2">
+        // Usando a chave que você já configurou
+        const GEMINI_API_KEY = "AIzaSyBLdfFdlMJfecsxdiBUFCBQjvIXdH0bNlg";
 
         const { useState, useEffect, useRef, useMemo } = React;
-        const { motion, AnimatePresence, Reorder } = FramerMotion;
+        const { motion, AnimatePresence } = FramerMotion;
         const { 
             AreaChart, Area, LineChart, Line, XAxis, YAxis, 
             CartesianGrid, Tooltip, ResponsiveContainer 
@@ -125,27 +112,27 @@
         const Icon = ({ name, color = 'currentColor', size = 24, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
-                const icon = lucide.icons[name];
-                if (icon && iconRef.current) {
-                    const svg = icon.toSvg({
-                        stroke: color,
-                        width: size,
-                        height: size,
-                        'stroke-width': 2,
-                    });
-                    iconRef.current.innerHTML = svg;
-                    // Mantém as classes extras do container ou passa para o SVG
-                    const svgElement = iconRef.current.firstElementChild;
-                    if (svgElement && className) {
-                        svgElement.classList.add(...className.split(' ').filter(c => c));
+                try {
+                    const icon = lucide.icons[name] || lucide.icons['HelpCircle'];
+                    if (icon && iconRef.current) {
+                        const svg = icon.toSvg({
+                            stroke: color,
+                            width: size,
+                            height: size,
+                            'stroke-width': 2,
+                        });
+                        iconRef.current.innerHTML = svg;
+                        const svgElement = iconRef.current.firstElementChild;
+                        if (svgElement && className) {
+                            svgElement.classList.add(...className.split(' ').filter(c => c));
+                        }
                     }
-                }
+                } catch(e) { console.error("Erro no ícone:", name, e); }
             }, [name, color, size, className]);
 
             return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`}></span>;
         };
 
-        // --- COMPONENTES UI ---
         const Card = ({ children, className = "", title }) => (
             <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -160,10 +147,9 @@
             </motion.div>
         );
 
-        // --- SERVICES (SIMULADOS SEM AXIOS/SDK PARA PORTABILIDADE) ---
         async function callGemini(prompt) {
-            if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("SUA_API_KEY")) {
-                alert("Por favor, adicione sua Gemini API Key na linha 115.");
+            if (!GEMINI_API_KEY || GEMINI_API_KEY === "SUA_API_KEY_AQUI") {
+                alert("Por favor, adicione sua Gemini API Key na linha 115 do seu arquivo.");
                 return null;
             }
             try {
@@ -172,9 +158,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: {
-                            responseMimeType: "application/json"
-                        }
+                        generationConfig: { responseMimeType: "application/json" }
                     })
                 });
                 const data = await response.json();
@@ -191,61 +175,6 @@
             return await callGemini(prompt) || [];
         };
 
-        const generateWorkoutPlan = async (profile, count) => {
-            const prompt = `Personal trainer elite. Crie treino personalizado: Idade ${profile.age}, Peso ${profile.weight}kg, Altura ${profile.height}cm, Bio ${profile.bodyType}, Meta ${profile.goal}. Crie Treino ${String.fromCharCode(65 + count)}. JSON: {name: string, description: string, exercises: Array<{id: string, name: string, sets: number, reps: string}>}`;
-            return await callGemini(prompt);
-        };
-
-        // --- COMPONENTES DE ITEM (REORDER) ---
-        const ReorderItem = ({ ex, onRemove, onEdit, onShare }) => {
-            const [isEditing, setIsEditing] = useState(false);
-            const [editSets, setEditSets] = useState(ex.sets);
-            const [editReps, setEditReps] = useState(ex.reps);
-
-            const handleSave = () => {
-                onEdit(Number(editSets), editReps);
-                setIsEditing(false);
-            };
-
-            return (
-                <Reorder.Item value={ex} className="relative z-10">
-                    <div className="flex flex-col gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 group hover:bg-white/10 transition-all shadow-xl">
-                        <div className="flex justify-between items-start">
-                            <div className="flex-grow">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <p className="font-bold text-white">{ex.name}</p>
-                                    {!isEditing && (
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                            <button onClick={() => setIsEditing(true)} className="p-1 text-slate-500 hover:text-blue-400"><Icon name="Settings2" size={14} /></button>
-                                            <button onClick={onShare} className="p-1 text-slate-500 hover:text-emerald-400"><Icon name="Share2" size={14} /></button>
-                                        </div>
-                                    )}
-                                </div>
-                                {isEditing ? (
-                                    <div className="flex flex-col gap-2 mt-2">
-                                        <div className="flex gap-2">
-                                            <input type="number" value={editSets} onChange={e => setEditSets(e.target.value)} className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white w-16" />
-                                            <input value={editReps} onChange={e => setEditReps(e.target.value)} className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white w-full" />
-                                        </div>
-                                        <div className="flex gap-2 justify-end">
-                                            <button onClick={() => setIsEditing(false)} className="text-[10px] font-black text-slate-500 uppercase">Cancelar</button>
-                                            <button onClick={handleSave} className="text-[10px] font-black text-blue-400 uppercase">Salvar</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
-                                        {ex.sets} séries • {ex.reps}
-                                    </p>
-                                )}
-                            </div>
-                            <button onClick={onRemove} className="p-2 bg-red-500/10 text-red-400 rounded-lg"><Icon name="Trash2" size={12} /></button>
-                        </div>
-                    </div>
-                </Reorder.Item>
-            );
-        };
-
-        // --- APP PRINCIPAL ---
         function App() {
             const [activeTab, setActiveTab] = useState('workouts');
             const [userProfile, setUserProfile] = useState(() => {
@@ -263,17 +192,14 @@
             const [elapsedSeconds, setElapsedSeconds] = useState(0);
             const [mealSuggestions, setMealSuggestionsState] = useState([]);
             const [loadingNutrition, setLoadingNutrition] = useState(false);
-            const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
             const [selectedActivity, setSelectedActivity] = useState('Musculação');
             const [selectedTiming, setSelectedTiming] = useState('Pré-treino');
 
-            // Persistência
             useEffect(() => localStorage.setItem('userProfile', JSON.stringify(userProfile)), [userProfile]);
             useEffect(() => localStorage.setItem('workouts', JSON.stringify(workouts)), [workouts]);
             useEffect(() => localStorage.setItem('gymTemplates', JSON.stringify(gymTemplates)), [gymTemplates]);
             useEffect(() => localStorage.setItem('activeWorkout', JSON.stringify(activeWorkout)), [activeWorkout]);
 
-            // Timer
             useEffect(() => {
                 let interval;
                 if (activeWorkout) {
@@ -284,36 +210,27 @@
                 return () => clearInterval(interval);
             }, [activeWorkout]);
 
-            const finishWorkout = () => {
-                const finished = { ...activeWorkout, duration: elapsedSeconds, timestamp: Date.now() };
-                setWorkouts([finished, ...workouts].slice(0, 50));
-                setActiveWorkout(null);
-            };
-
             const startWorkout = (template) => {
-                const newWorkout = {
+                setActiveWorkout({
                     id: Math.random().toString(36).substr(2, 9),
                     date: new Date().toLocaleDateString('pt-BR'),
                     notes: template.name,
                     timestamp: Date.now(),
                     exercises: template.exercises.map(ex => ({ ...ex, completed: false, weight: '' }))
-                };
-                setActiveWorkout(newWorkout);
+                });
                 setActiveTab('workouts');
+            };
+
+            const finishWorkout = () => {
+                setWorkouts([{ ...activeWorkout, duration: elapsedSeconds, timestamp: Date.now() }, ...workouts].slice(0, 50));
+                setActiveWorkout(null);
             };
 
             const handleFetchNutrition = async () => {
                 setLoadingNutrition(true);
                 const s = await getMealSuggestions(selectedActivity, selectedTiming, userProfile.goal);
-                setMealSuggestionsState(s);
+                setMealSuggestionsState(s || []);
                 setLoadingNutrition(false);
-            };
-
-            const toggleActiveExercise = (id) => {
-                setActiveWorkout({
-                    ...activeWorkout,
-                    exercises: activeWorkout.exercises.map(e => e.id === id ? { ...e, completed: !e.completed } : e)
-                });
             };
 
             return (
@@ -338,7 +255,7 @@
                     <main className="max-w-lg mx-auto px-6">
                         <AnimatePresence mode="wait">
                             {activeTab === 'workouts' && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                <motion.div key="workouts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
                                     {activeWorkout ? (
                                         <Card title="Treino Ativo">
                                             <div className="flex justify-between items-center mb-6">
@@ -346,41 +263,23 @@
                                                     <Icon name="Timer" color="#3b82f6" className="animate-pulse" />
                                                     {Math.floor(elapsedSeconds/60)}:{(elapsedSeconds%60).toString().padStart(2, '0')}
                                                 </p>
-                                                <button onClick={finishWorkout} className="bg-emerald-500 px-6 py-3 rounded-2xl font-black text-xs uppercase text-white shadow-lg shadow-emerald-500/20">Finalizar</button>
+                                                <button onClick={finishWorkout} className="bg-emerald-500 px-6 py-3 rounded-2xl font-black text-xs uppercase text-white">Finalizar</button>
                                             </div>
                                             <div className="space-y-4">
                                                 {activeWorkout.exercises.map(ex => (
-                                                    <div key={ex.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between" onClick={() => toggleActiveExercise(ex.id)}>
-                                                        <div className="flex items-center gap-3">
-                                                            {ex.completed ? <Icon name="CheckCircle2" color="#10b981" /> : <Icon name="Circle" color="#64748b" />}
-                                                            <p className={`font-bold ${ex.completed ? 'line-through text-slate-500' : 'text-white'}`}>{ex.name}</p>
-                                                        </div>
-                                                        <input 
-                                                            type="text" value={ex.weight} 
-                                                            onChange={e => {
-                                                                e.stopPropagation();
-                                                                setActiveWorkout({...activeWorkout, exercises: activeWorkout.exercises.map(ev => ev.id === ex.id ? {...ev, weight: e.target.value} : ev)});
-                                                            }}
-                                                            className="w-16 bg-white/10 rounded-lg p-2 text-center text-xs text-white" 
-                                                            placeholder="kg"
-                                                        />
+                                                    <div key={ex.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
+                                                        <p className="font-bold text-white">{ex.name}</p>
+                                                        <span className="text-xs text-slate-400">{ex.sets}x{ex.reps}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </Card>
                                     ) : (
                                         <div className="space-y-4">
+                                            {workouts.length === 0 && <p className="text-center text-slate-500 py-10">Nenhum treino registrado.</p>}
                                             {workouts.map(w => (
                                                 <Card key={w.id} title={w.notes}>
                                                     <p className="text-xs text-slate-500 uppercase font-black">{w.date}</p>
-                                                    <div className="mt-4 space-y-2">
-                                                        {w.exercises.map(ex => (
-                                                            <div key={ex.id} className="flex justify-between items-center text-sm font-medium">
-                                                                <span className="text-slate-300">{ex.name}</span>
-                                                                <span className="text-blue-400">{ex.weight}kg</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
                                                 </Card>
                                             ))}
                                         </div>
@@ -389,19 +288,10 @@
                             )}
 
                             {activeTab === 'gym' && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                <motion.div key="gym" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
                                     {gymTemplates.map(t => (
                                         <Card key={t.id} title={t.name}>
-                                            <p className="text-xs text-slate-400 mb-4">{t.description}</p>
-                                            <div className="space-y-3 mb-6">
-                                                {t.exercises.map(ex => (
-                                                    <div key={ex.id} className="p-3 bg-white/5 rounded-xl flex justify-between items-center">
-                                                        <span className="font-bold text-sm">{ex.name}</span>
-                                                        <span className="text-xs text-slate-500 uppercase font-black">{ex.sets}x{ex.reps}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <button onClick={() => startWorkout(t)} className="w-full bg-blue-600 py-3 rounded-2xl font-black uppercase text-xs text-white shadow-lg shadow-blue-600/20">Iniciar Treino</button>
+                                            <button onClick={() => startWorkout(t)} className="w-full bg-blue-600 py-3 rounded-2xl font-black uppercase text-xs text-white">Iniciar Treino</button>
                                         </Card>
                                     ))}
                                 </motion.div>
@@ -410,56 +300,29 @@
                             {activeTab === 'nutrition' && (
                                 <motion.div key="nutrition" className="space-y-6">
                                     <div className="bg-white/5 p-4 rounded-3xl border border-white/10 space-y-4">
-                                        <div className="flex gap-2">
-                                            {['Musculação', 'Tênis'].map(a => (
-                                                <button key={a} onClick={() => setSelectedActivity(a)} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase ${selectedActivity === a ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-400'}`}>{a}</button>
-                                            ))}
-                                        </div>
-                                        <button onClick={handleFetchNutrition} disabled={loadingNutrition} className="w-full bg-white text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest">
+                                        <button onClick={handleFetchNutrition} disabled={loadingNutrition} className="w-full bg-white text-slate-900 py-4 rounded-2xl font-black uppercase">
                                             {loadingNutrition ? 'Gerando...' : 'Obter Dietas IA'}
                                         </button>
                                     </div>
-                                    <div className="space-y-4">
-                                        {mealSuggestions.map((m, i) => (
-                                            <Card key={i} title={m.name}>
-                                                <p className="text-sm text-slate-400 mb-4">{m.benefits}</p>
-                                                <ul className="space-y-1 mb-4">
-                                                    {m.ingredients.map((ing, ii) => (
-                                                        <li key={ii} className="text-sm flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full" /> {ing}</li>
-                                                    ))}
-                                                </ul>
-                                                <div className="flex gap-2">
-                                                    <div className="flex-1 bg-white/5 p-2 rounded-lg text-center"><p className="text-[8px] uppercase text-slate-500 font-bold">Prot</p><p className="text-xs font-bold">{m.macros.prot}</p></div>
-                                                    <div className="flex-1 bg-white/5 p-2 rounded-lg text-center"><p className="text-[8px] uppercase text-slate-500 font-bold">Carb</p><p className="text-xs font-bold">{m.macros.carb}</p></div>
-                                                    <div className="flex-1 bg-white/5 p-2 rounded-lg text-center"><p className="text-[8px] uppercase text-slate-500 font-bold">Gord</p><p className="text-xs font-bold">{m.macros.fat}</p></div>
-                                                </div>
-                                            </Card>
-                                        ))}
-                                    </div>
+                                    {mealSuggestions.map((m, i) => (
+                                        <Card key={i} title={m.name}>
+                                            <p className="text-sm text-slate-400">{m.benefits}</p>
+                                        </Card>
+                                    ))}
                                 </motion.div>
                             )}
 
                             {activeTab === 'profile' && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-                                    <Card title="Meus Dados">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] font-black text-slate-500 uppercase mb-2 block">Peso (kg)</label>
-                                                <input type="number" value={userProfile.weight} onChange={e => setUserProfile({...userProfile, weight: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white font-bold" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-black text-slate-500 uppercase mb-2 block">Objetivo</label>
-                                                <input type="text" value={userProfile.goal} onChange={e => setUserProfile({...userProfile, goal: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white font-bold" />
-                                            </div>
-                                            <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full bg-red-500/10 text-red-500 py-3 rounded-xl text-xs font-black uppercase">Limpar Tudo</button>
-                                        </div>
+                                <motion.div key="profile" className="space-y-6">
+                                    <Card title="Perfil">
+                                        <p className="text-slate-400">Peso: {userProfile.weight}kg</p>
+                                        <p className="text-slate-400">Objetivo: {userProfile.goal}</p>
                                     </Card>
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </main>
 
-                    {/* Navigation Bar */}
                     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 pb-8 pt-4 bg-slate-950/80 backdrop-blur-3xl border-t border-white/5 z-50">
                         <div className="flex justify-around items-center">
                             {[
@@ -468,9 +331,9 @@
                                 {id: 'nutrition', icon: 'Utensils', label: 'Nutrition'},
                                 {id: 'profile', icon: 'User', label: 'Profile'}
                             ].map(item => (
-                                <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === item.id ? 'text-blue-500' : 'text-slate-500'}`}>
+                                <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center gap-1.5 ${activeTab === item.id ? 'text-blue-500' : 'text-slate-500'}`}>
                                     <Icon name={item.icon} size={24} color={activeTab === item.id ? '#3b82f6' : '#64748b'} />
-                                    <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
+                                    <span className="text-[9px] font-black uppercase">{item.label}</span>
                                 </button>
                             ))}
                         </div>
