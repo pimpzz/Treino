@@ -87,33 +87,48 @@
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <div id="loading-screen" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; color: white; background: #020617; font-family: sans-serif;">
+            <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; font-family: 'Outfit';">PFORM</div>
+            <div style="opacity: 0.6; font-size: 0.9rem;">Carregando sistema...</div>
+        </div>
+    </div>
 
     <!-- Bibliotecas Externas -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/framer-motion@11.0.3/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/lucide"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
     <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
 
-    <script type="text/babel" data-presets="react,stage-2">
-        // Usando a chave que você já configurou
+    <script type="text/babel">
+        // Log para depuração no celular
+        console.log("PFORM: Iniciando scripts Babel...");
+        // --- CONFIGURAÇÃO ---
         const GEMINI_API_KEY = "AIzaSyBLdfFdlMJfecsxdiBUFCBQjvIXdH0bNlg";
 
         const { useState, useEffect, useRef, useMemo } = React;
-        const { motion, AnimatePresence } = FramerMotion;
+        
+        // Verificação segura das bibliotecas
+        const motion = window.Motion?.motion || (window.FramerMotion ? window.FramerMotion.motion : null);
+        const AnimatePresence = window.Motion?.AnimatePresence || (window.FramerMotion ? window.FramerMotion.AnimatePresence : null);
+        
         const { 
             AreaChart, Area, LineChart, Line, XAxis, YAxis, 
             CartesianGrid, Tooltip, ResponsiveContainer 
-        } = Recharts;
+        } = window.Recharts || {};
+
+        if (!motion) console.error("Framer Motion não carregado!");
+        if (!window.Recharts) console.error("Recharts não carregado!");
 
         // Helper para ícones Lucide no React
         const Icon = ({ name, color = 'currentColor', size = 24, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
                 try {
-                    const icon = lucide.icons[name] || lucide.icons['HelpCircle'];
+                    const icons = window.lucide?.icons || {};
+                    const icon = icons[name] || icons['HelpCircle'] || icons['Activity'];
                     if (icon && iconRef.current) {
                         const svg = icon.toSvg({
                             stroke: color,
@@ -133,8 +148,12 @@
             return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`}></span>;
         };
 
+        // Fallback simples para motion se não carregar
+        const MotionDiv = motion ? motion.div : "div";
+        const MotionAnimatePresence = AnimatePresence || (({children}) => children);
+
         const Card = ({ children, className = "", title }) => (
-            <motion.div
+            <MotionDiv
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className={`bg-white/5 backdrop-blur-xl rounded-[32px] p-6 border border-white/10 glass-shadow overflow-hidden relative ${className}`}
@@ -144,7 +163,7 @@
                     <h3 className="text-xl font-semibold text-white mb-6 tracking-tight">{title}</h3>
                 )}
                 {children}
-            </motion.div>
+            </MotionDiv>
         );
 
         async function callGemini(prompt) {
@@ -253,9 +272,9 @@
                     </header>
 
                     <main className="max-w-lg mx-auto px-6">
-                        <AnimatePresence mode="wait">
+                        <MotionAnimatePresence mode="wait">
                             {activeTab === 'workouts' && (
-                                <motion.div key="workouts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                <MotionDiv key="workouts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
                                     {activeWorkout ? (
                                         <Card title="Treino Ativo">
                                             <div className="flex justify-between items-center mb-6">
@@ -288,7 +307,7 @@
                             )}
 
                             {activeTab === 'gym' && (
-                                <motion.div key="gym" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                <MotionDiv key="gym" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
                                     {gymTemplates.map(t => (
                                         <Card key={t.id} title={t.name}>
                                             <button onClick={() => startWorkout(t)} className="w-full bg-blue-600 py-3 rounded-2xl font-black uppercase text-xs text-white">Iniciar Treino</button>
@@ -298,7 +317,7 @@
                             )}
                             
                             {activeTab === 'nutrition' && (
-                                <motion.div key="nutrition" className="space-y-6">
+                                <MotionDiv key="nutrition" className="space-y-6">
                                     <div className="bg-white/5 p-4 rounded-3xl border border-white/10 space-y-4">
                                         <button onClick={handleFetchNutrition} disabled={loadingNutrition} className="w-full bg-white text-slate-900 py-4 rounded-2xl font-black uppercase">
                                             {loadingNutrition ? 'Gerando...' : 'Obter Dietas IA'}
@@ -313,14 +332,14 @@
                             )}
 
                             {activeTab === 'profile' && (
-                                <motion.div key="profile" className="space-y-6">
+                                <MotionDiv key="profile" className="space-y-6">
                                     <Card title="Perfil">
                                         <p className="text-slate-400">Peso: {userProfile.weight}kg</p>
                                         <p className="text-slate-400">Objetivo: {userProfile.goal}</p>
                                     </Card>
                                 </motion.div>
                             )}
-                        </AnimatePresence>
+                        </MotionAnimatePresence>
                     </main>
 
                     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 pb-8 pt-4 bg-slate-950/80 backdrop-blur-3xl border-t border-white/5 z-50">
